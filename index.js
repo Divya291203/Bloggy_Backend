@@ -14,6 +14,7 @@ import postRouter from "./routes/post.routes.js";
 import userRouter from "./routes/user.routes.js";
 import commentRouter from "./routes/comment.routes.js";
 import statsRouter from "./routes/stats.routes.js";
+import aiRouter from "./routes/ai.routes.js";
 const app = express();
 
 //middleware for cors error
@@ -45,6 +46,7 @@ app.use(
 		crossOriginResourcePolicy: { policy: "cross-origin" },
 	})
 );
+
 // app.use(mongoSanitize());
 
 //db connection
@@ -67,10 +69,18 @@ app.use(
 
 //routes
 app.use("/api/v1/auth", authRouter);
+
 app.use("/api/v1/post", postRouter);
+
 app.use("/api/v1/user", userRouter);
+
 app.use("/api/v1/comment", commentRouter);
+
 app.use("/api/v1/stats", statsRouter);
+
+app.use("/api/v1/ai", aiRouter);
+
+
 
 //server starts
 const PORT = process.env.PORT || 5000;

@@ -1,12 +1,21 @@
 import multer from "multer";
 
 //Configure Multer storage
+
 const storage = multer.diskStorage({
-	destination: function (req, file, cb) {
-		cb(null, "uploads/");
+	destination: (req, file, cb) => {
+		try {
+			cb(null, "uploads/");
+		} catch (error) {
+			cb(new Error("Failed to create upload directory"), null);
+		}
 	},
 	filename: function (req, file, cb) {
-		cb(null, `${Date.now()}-${file.originalname}`);
+		try {
+			cb(null, `${Date.now()}-${file.originalname}`);
+		} catch (error) {
+			cb(new Error("Failed to create filename"), null);
+		}
 	},
 });
 

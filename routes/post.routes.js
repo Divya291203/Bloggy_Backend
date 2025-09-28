@@ -20,14 +20,17 @@ router.post(
 	createPost
 );
 router.get("/", protect, getPosts);
-router.get("/my-posts", protect, getMyPosts);
+
+router.get("/my-posts", protect, roleCheck(["admin", "author"]), getMyPosts);
 router.get("/drafts", protect, getDrafts);
+
 router.get("/:id", protect, getPostById);
+
 router.delete(
 	"/delete-post",
 	protect,
 	roleCheck(["admin", "author"]),
 	deletePost
 );
-router.put("/update/:id", protect, roleCheck(["author", "admin"]), updatePost);
+router.put("/update/:id", protect, roleCheck(["admin", "author"]), updatePost);
 export default router;

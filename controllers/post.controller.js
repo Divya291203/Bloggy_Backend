@@ -1,5 +1,6 @@
 import Post from "../models/Post.model.js";
 import slugCreator from "../utils/slug.js";
+import { POST_SORT_BY } from "../utils/enums.js";
 
 //create a new post
 export const createPost = async (req, res) => {
@@ -11,7 +12,6 @@ export const createPost = async (req, res) => {
 				.status(400)
 				.json({ message: "Please Proveid all required fields" });
 		}
-
 		const slug = slugCreator(req.body.title);
 
 		const newPost = new Post({
@@ -19,7 +19,6 @@ export const createPost = async (req, res) => {
 			slug,
 			userId: req.user.id,
 		});
-
 		const savePost = await newPost.save();
 		res.status(200).json(savePost);
 	} catch (error) {
@@ -37,11 +36,20 @@ export const getPosts = async (req, res) => {
 			limit = 10,
 			search = "",
 			category,
-			sortBy = "createdAt",
-			order = "desc",
+			sortBy = POST_SORT_BY.NEWEST,
 		} = req.query;
 
-		const query = {};
+		let sortOptions = {};
+		let query = {};
+		if (sortBy === POST_SORT_BY.OLDEST) {
+			sortOptions.createdAt = 1;
+		} else if (sortBy === POST_SORT_BY.TITLE) {
+			sortOptions.title = 1;
+		} else if (sortBy === POST_SORT_BY.VIEWS) {
+			sortOptions.views = -1;
+		} else {
+			sortOptions.createdAt = -1;
+		}
 
 		if (search) {
 			query.$or = [
@@ -54,16 +62,18 @@ export const getPosts = async (req, res) => {
 			query.category = category;
 		}
 
+		query.isDraft = false;
+
 		const skip = (Number(page) - 1) * Number(limit);
 
-		const posts = await Post.find(query, { isDraft: false })
-			.sort({
-				[sortBy]: order === "asc" ? 1 : -1,
-			})
+		const posts = await Post.find(query)
+			.sort(sortOptions)
 			.skip(skip)
 			.limit(Number(limit))
 			.populate("userId", "name email avatar bio role");
+
 		const totalPosts = await Post.countDocuments(query);
+
 		res.status(200).json({
 			posts,
 			totalPosts,
@@ -79,8 +89,8 @@ export const getPosts = async (req, res) => {
 
 //get post by id
 export const getPostById = async (req, res) => {
+	const postId = req.params.id;
 	try {
-		const postId = req.params.id;
 		const post = await Post.findById(postId).populate(
 			"userId",
 			"name email avatar bio role"
@@ -89,6 +99,10 @@ export const getPostById = async (req, res) => {
 		if (!post) {
 			return res.status(404).json({ message: "Post not found" });
 		}
+
+		//increment the views
+		post.views++;
+		await post.save();
 
 		res.status(200).json({ message: "Post fetched successfully", post });
 	} catch (error) {
@@ -101,7 +115,7 @@ export const getPostById = async (req, res) => {
 //delete a post by postid
 export const deletePost = async (req, res) => {
 	try {
-		const userId = req.user.id;
+		const requestUserId = req.user.id;
 		const postId = req.body.id;
 
 		if (req.user.role === "admin") {
@@ -109,7 +123,8 @@ export const deletePost = async (req, res) => {
 			res.status(200).json({ message: "Post has been deleted successfully" });
 		} else {
 			const post = await Post.findById(postId);
-			if (post.userId == userId) {
+			const authorId = post.userId;
+			if (authorId == requestUserId) {
 				await post.deleteOne();
 				res.status(200).json({ message: "Post has been deleted successfully" });
 			} else {
@@ -129,11 +144,16 @@ export const deletePost = async (req, res) => {
 export const updatePost = async (req, res) => {
 	try {
 		const postId = req.params.id;
-
 		const post = await Post.findById(postId);
 
 		if (!post) {
 			return res.status(404).json({ message: "Post not found" });
+		}
+
+		if (req.user.id !== post.userId) {
+			return res
+				.status(403)
+				.json({ message: "You are not the author of this post" });
 		}
 
 		post.title = req.body.title ?? post.title;
@@ -142,6 +162,9 @@ export const updatePost = async (req, res) => {
 		post.category = req.body.category ?? post.category;
 		post.isDraft = req.body.isDraft ?? post.isDraft;
 
+		if (req.body.title) {
+			post.slug = slugCreator(req.body.title);
+		}
 		const updatedPost = await post.save();
 		res
 			.status(200)

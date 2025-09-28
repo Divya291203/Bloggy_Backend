@@ -14,12 +14,14 @@ export const registerUser = async (req, res) => {
 	try {
 		const { name, email, password, avatar, role } = req.body;
 		//data validation
-		if (!name || !email || !password || !role || !avatar) {
+
+		if (!name || !email || !password || !role) {
 			return res.status(401).json({ message: "Enter all details" });
 		}
 
 		//user validation
 		const userExist = await User.findOne({ email });
+
 		if (userExist) {
 			return res.status(400).json({ message: "User Already Exist" });
 		}
@@ -31,7 +33,9 @@ export const registerUser = async (req, res) => {
 			avatar,
 			role,
 		});
+
 		const token = generateToken(user._id);
+
 		res
 			.status(200)
 			.cookie("access_token", token, {
@@ -62,6 +66,7 @@ export const loginUser = async (req, res) => {
 
 		//validating user
 		const user = await User.findOne({ email });
+
 		if (!user) {
 			return res.status(404).json({ message: "User not found" });
 		}
@@ -73,6 +78,7 @@ export const loginUser = async (req, res) => {
 		}
 
 		const token = generateToken(user._id);
+
 		res
 			.status(200)
 			.cookie("access_token", token, {
@@ -91,24 +97,10 @@ export const loginUser = async (req, res) => {
 	}
 };
 
-//signout
-export const signout = async (req, res) => {
-	try {
-		res
-			.clearCookie("access_token")
-			.status(200)
-			.json({ message: "User signout successfully" });
-	} catch (error) {
-		res
-			.status(500)
-			.json({ message: "Internal Server Error", error: error.message });
-	}
-};
-
 //get me
 export const getUser = async (req, res) => {
 	try {
-		const user = await User.findById(req.user.id).select("-password");
+		const user = await User.findById(req.user.id).select("-i");
 		res.status(200).json(user);
 	} catch (error) {
 		res.status(500).json({ message: "Server Error", error: error.message });

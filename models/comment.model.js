@@ -70,6 +70,9 @@ commentSchema.pre("save", async function (next) {
 	next();
 });
 
+
+
+
 //auto populate replies and postedBy
 const autoPopulateReplies = function (next) {
 	this.populate({
@@ -79,7 +82,7 @@ const autoPopulateReplies = function (next) {
 			select: "name email avatar bio role",
 		},
 	});
-	this.populate("userId", "name email avatar bio role");
+
 	next();
 };
 

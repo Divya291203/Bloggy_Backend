@@ -1,20 +1,20 @@
 import User from "../models/User.model.js";
 
 //get user
-// export const getUser = async (req, res) => {
-// 	try {
-// 		const id = req.user.id;
-// 		const user = await User.findById(id).select("-password");
-// 		if (!user) {
-// 			return res.status(404).json({ message: "User not found" });
-// 		}
-// 		res.status(200).json({ message: "User found", user });
-// 	} catch (error) {
-// 		res
-// 			.status(500)
-// 			.json({ message: "Internal Server Error", error: error.message });
-// 	}
-// };
+export const getUser = async (req, res) => {
+	try {
+		const id = req.user.id;
+		const user = await User.findById(id).select("-password");
+		if (!user) {
+			return res.status(404).json({ message: "User not found" });
+		}
+		res.status(200).json({ message: "User found", user });
+	} catch (error) {
+		res
+			.status(500)
+			.json({ message: "Internal Server Error", error: error.message });
+	}
+};
 
 //get all user
 export const getAllUsers = async (req, res) => {
@@ -34,12 +34,18 @@ export const getAllUsers = async (req, res) => {
 //delete user by id
 export const deleteUser = async (req, res) => {
 	try {
-		const id = req.body.id;
-		const user = await User.findById(id);
+		const userWillBeDeleted = req.body.id;
+		const user = await User.findById(userWillBeDeleted);
 		if (!user) {
 			return res.status(404).json({ message: "User not found" });
 		}
-		await user.deleteOne();
+		if (user.role === "admin" || req.user.id == userWillBeDeleted) {
+			await user.deleteOne();
+		} else {
+			return res
+				.status(403)
+				.json({ message: "You are not allowed to delete this user" });
+		}
 		res.status(200).json({ message: "User deleted successfully" });
 	} catch (error) {
 		res
@@ -56,18 +62,19 @@ export const updataUser = async (req, res) => {
 		if (!user) {
 			return res.status(404).json({ message: "User not found" });
 		}
+
 		if (req.user.id != id) {
 			return res.status(403).json({ message: "Not allowed" });
 		}
-		//TODO: update better sanitation of given data for update
+		// //TODO: update better sanitation of given data for update
 
 		const { name, email, password, avatar, bio } = req.body;
 
-		user.name = name || user.name;
-		user.email = email || user.email;
-		user.password = password || user.password;
-		user.avatar = avatar || user.avatar;
-		user.bio = bio || user.bio;
+		user.name = name ?? user.name;
+		user.email = email ?? user.email;
+		user.password = password ?? user.password;
+		user.avatar = avatar ?? user.avatar;
+		user.bio = bio ?? user.bio;
 
 		const updatedUser = await user.save();
 		res
@@ -91,6 +98,7 @@ export const imageUpload = async (req, res) => {
 		const imageUrl = `${req.protocol}://${req.get("host")}/uploads/${
 			req.file.filename
 		}`;
+		
 		res
 			.status(200)
 			.json({ message: "File uploaded successfully", url: imageUrl });

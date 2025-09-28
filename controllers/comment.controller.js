@@ -6,6 +6,7 @@ const deleteCommentWithChildren = async (commentId) => {
 	if (!comment) {
 		return;
 	}
+
 	await Promise.all(
 		comment.replies.map((replyId) => deleteCommentWithChildren(replyId))
 	);
@@ -17,13 +18,17 @@ export const createComment = async (req, res) => {
 	try {
 		const { content, postId } = req.body;
 
-		const newComment = await Comment({
+		if (!content || !postId) {
+			return res
+				.status(400)
+				.json({ message: "Please provide all required fields" });
+		}
+
+		const newComment = await Comment.create({
 			content,
 			postId,
 			userId: req.user.id,
 		});
-
-		await newComment.save();
 		res.status(200).json({ message: "Comment created successfully" });
 	} catch (error) {
 		res
@@ -58,13 +63,14 @@ export const deleteComment = async (req, res) => {
 			return res.status(404).json({ message: "Comment not found" });
 		}
 
-		if (comment.userId != req.user.id && req.user.role != "admin") {
+		if (comment.userId === req.user.id || req.user.role === "admin") {
+			await deleteCommentWithChildren(id);
+		} else {
 			return res
 				.status(403)
 				.json({ message: "You are not allowed to delete this comment" });
 		}
 
-		await deleteCommentWithChildren(comment._id);
 		res.status(200).json({ message: "Comment has been deleted successfully" });
 	} catch (error) {
 		res
@@ -79,11 +85,16 @@ export const editComment = async (req, res) => {
 		if (!comment) {
 			res.status(404).json({ message: "Comment not found" });
 		}
-		if (comment.userId != req.user.id && req.user.role != "admin") {
-			res.status(403).json({ message: "not allowed to edit this comment" });
+		let newComment;
+		if (comment.userId === req.user.id || req.user.role === "admin") {
+			comment.content = req.body.content ?? comment.content;
+			newComment = await comment.save();
+		} else {
+			return res
+				.status(403)
+				.json({ message: "not allowed to edit this comment" });
 		}
-		comment.content = req.body.content || comment.content;
-		const newComment = await comment.save();
+
 		res
 			.status(200)
 			.json({ message: "comment updated successfully", newComment });
@@ -100,6 +111,8 @@ export const likeComments = async (req, res) => {
 		if (!comment) {
 			res.status(404).json({ message: "comment not found" });
 		}
+
+		let newCommentLikes = [];
 
 		if (comment.likes.includes(req.user.id)) {
 			const index = comment.likes.indexOf(req.user.id);
@@ -127,7 +140,7 @@ export const getComments = async (req, res) => {
 		const skip = (Number(page) - 1) * Number(limit);
 		const sortDirection = order === "desc" ? -1 : 1;
 
-		const comment = await Comment.find()
+		const comments = await Comment.find()
 			.populate("userId", "name email avatar bio role")
 			.populate("postId", "title slug")
 			.sort({ createdAt: Number(sortDirection) })
@@ -136,7 +149,7 @@ export const getComments = async (req, res) => {
 
 		const totalComments = await Comment.countDocuments();
 		res.status(200).json({
-			comment,
+			comments,
 			totalComments,
 			currentPage: Number(page),
 			totalPages: Math.ceil(totalComments / limit),
@@ -151,7 +164,7 @@ export const getComments = async (req, res) => {
 export const reply = async (req, res) => {
 	try {
 		const { postId, commentId, content } = req.body;
-		const newReply = await Comment({
+		const newReply = new Comment({
 			content,
 			postId,
 			userId: req.user.id,
