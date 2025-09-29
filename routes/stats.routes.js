@@ -20,6 +20,13 @@ router.get("/total-comments", protect, roleCheck(["admin"]), totalComments);
 router.get("/todays-stats", protect, roleCheck(["admin"]), todaysStats);
 router.get("/weekly-stats", protect, roleCheck(["admin"]), weeklyStats);
 router.get("/monthly-stats", protect, roleCheck(["admin"]), monthlyStats);
+// router.get(
+// 	"/recent-activities",
+// 	protect,
+// 	roleCheck(["admin"]),
+// 	recentActivities
+// );
+// router.get("/recent-activities", recentActivities);
 
 // Author Stats
 router.get(

@@ -90,7 +90,7 @@ export const updataUser = async (req, res) => {
 //image upload
 export const imageUpload = async (req, res) => {
 	try {
-		console.log("backend image upload");
+		console.log("req.file", req.file);
 		if (!req.file) {
 			return res.status(400).json({ message: "No file uploaded" });
 		}
@@ -98,7 +98,7 @@ export const imageUpload = async (req, res) => {
 		const imageUrl = `${req.protocol}://${req.get("host")}/uploads/${
 			req.file.filename
 		}`;
-		
+
 		res
 			.status(200)
 			.json({ message: "File uploaded successfully", url: imageUrl });
